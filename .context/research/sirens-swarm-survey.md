@@ -70,6 +70,54 @@ GitGuardian / dorks
 
 Each swarm is a LangGraph subgraph; nodes are agents; edges are policy-gated. All persistent state flows through **OpenCTI (graph) + MISP (IOCs) + TheHive (cases)**. Deception telemetry is a first-class collector feeding back into the Research swarm.
 
+### 3.1 Research swarm
+
+- **Projects:** SpiderFoot, Mihari, ThreatIngestor, IntelOwl, abuse.ch (MalwareBazaar / URLhaus / ThreatFox), AlienVault OTX, VirusTotal, Shodan, Censys, GreyNoise, Ahmia, theHarvester, Recon-ng, Harpoon.
+- **Agents:** Planner, Collector (per source family), Enricher, Correlator, Analyst, Reporter. See §4.
+- **APIs / function calls:** `spiderfoot.start_scan` / `get_scan_summary`; `intelowl.submit_observable` / `get_job`; abuse.ch REST (`/api/v1/get`); OTX `/api/v1/pulses/subscribed`; Shodan `/host/{ip}`; Censys `/v2/hosts/search`; GreyNoise `/v3/community/{ip}`; VirusTotal `/files/{hash}`; Ahmia search JSON.
+- **State:** Writes STIX 2.1 bundles + MISP events + indicator labels into OpenCTI / MISP. Reads prior campaign graph from OpenCTI for pivot.
+- **MCP broker:** **to-write** — `sirens-mcp-intelowl`, `sirens-mcp-opencti`, `sirens-mcp-spiderfoot`. Direct REST for abuse.ch / OTX / Shodan / Censys / GreyNoise / VT inside Collector tools.
+
+### 3.2 Hunt swarm (SOC)
+
+- **Projects:** Wazuh (indexer + manager), SigmaHQ rule-packs, OTRF ThreatHunter-Playbook, Elastic Common Schema.
+- **Agents:** Hypothesis-Planner (reads OTRF playbook), Query-Writer (Sigma → Wazuh KQL / OpenSearch DSL), Triage-Analyst (scores hits against OpenCTI context), Escalator (opens TheHive case).
+- **APIs / function calls:** Wazuh REST `/agents`, `/alerts`; OpenSearch `_search`; Sigma→backend translation via [`pySigma`](https://github.com/SigmaHQ/pySigma) + `pysigma-backend-opensearch`; `thehive.create_case`.
+- **State:** Reads telemetry from Wazuh indexer, playbooks from git submodule, IOC context from OpenCTI. Writes cases to TheHive; reinforces detection gaps into the Detection-Engineering swarm queue.
+- **MCP broker:** `mcp-server-wazuh` (vendored from gbrigandi), `mcp-server-thehive` (vendored). pySigma runs in-process in the agent.
+
+### 3.3 IR / DFIR swarm
+
+- **Projects:** Velociraptor (primary), GRR (secondary), Timesketch, Plaso, Volatility3 (memory), dfir-iris (case).
+- **Agents:** Collector (chooses Velociraptor artifact packs), Timeline-Builder (plaso → Timesketch), Memory-Analyst (Volatility3 plugins), Root-Cause-Writer.
+- **APIs / function calls:** Velociraptor gRPC `CollectArtifact` / `GetFlow` / `VFSListDirectory` / raw VQL; Timesketch REST `/api/v1/sketches/{id}/timelines`; Plaso `log2timeline.py` / `psort.py`; Volatility3 `vol.py -f <image> <plugin>`.
+- **State:** Attaches flow results + timelines to the TheHive case; promotes confirmed IOCs into OpenCTI and MISP.
+- **MCP broker:** **to-write** — `sirens-mcp-velociraptor` (done, Phase 2). Timesketch / Plaso / Volatility: glue CLIs via a thin MCP wrapper (**gap**).
+
+### 3.4 Detection-Engineering swarm
+
+- **Projects:** SigmaHQ, YARA, Nuclei + nuclei-templates, Uncoder AI (Sigma↔backend), SigmaGen (LLM-to-Sigma), CTI-REALM (benchmark methodology), Splunk Attack Range / [HELK](https://github.com/Cyb3rWard0g/HELK) (controlled telemetry).
+- **Agents:** Rule-Author (LLM drafts Sigma/YARA/Nuclei from ATT&CK technique + campaign bundle), Rule-Tester (runs against captured telemetry in HELK/Attack-Range), Rule-Tuner (iterates on FP/FN), Rule-Publisher (PR to internal SigmaHQ fork).
+- **APIs / function calls:** `yara.compile`; `nuclei -t {template} -target {sandbox}`; pySigma backend conversion; Splunk Attack Range Lambda APIs; telemetry playback via Wazuh indexer.
+- **State:** Reads ATT&CK mappings + campaign STIX bundles from OpenCTI. Writes published rules as git artifacts; reward-loop scores stored per rule (for the reward loop — gap §7).
+- **MCP broker:** **to-write** — light wrappers around `yara` / `nuclei` / `pysigma` (**gap**). Code-commit operations via git, not MCP.
+
+### 3.5 Deception swarm (Sirens-specific)
+
+- **Projects:** Thinkst Canarytokens (self-hosted), OpenCanary, Modern Honey Network, T-Pot, DNSChef, BIND RPZ.
+- **Agents:** Placement-Planner (decides what token / decoy goes where, per scope allow-list `honey_tokens` block), Deployer (calls `canarytokens.create_token` / OpenCanary config push), Callback-Watcher (tails MHN + Canarytokens history), Sinkhole-Operator (publishes RPZ zones for owned / court-authorised domains only).
+- **APIs / function calls:** Canarytokens REST `/generate`, `/history`, `/disable`; OpenCanary config via Ansible; MHN REST `/api/sessions`; BIND RPZ via `rndc reload` on owned resolver.
+- **State:** Every callback becomes a high-fidelity IOC written to OpenCTI + MISP, tagged `sirens:deception:<campaign>`.
+- **MCP broker:** **to-write** — `sirens-mcp-canarytokens` (done, Phase 2). OpenCanary / MHN / BIND-RPZ: **gap**, likely a `sirens-mcp-deception-ops` wrapper.
+
+### 3.6 Knowledge layer (shared)
+
+- **Projects:** OpenCTI + Neo4j + Elasticsearch + Redis + MinIO + RabbitMQ, MISP + MariaDB, TheHive + Cortex + Cassandra.
+- **Agents:** None — this is substrate. The swarms read/write via MCP.
+- **APIs / function calls:** OpenCTI GraphQL via `pycti` (`stix_domain_object.create`, `indicator.create`, `report.create`, `stix_core_relationship.create`, `label.create`); MISP REST (`/events/add`, `/attributes/add`, `/tags/attachTagToObject`); TheHive v5 REST (`/api/v1/case`, `/api/v1/task`, `/api/v1/observable`); Cortex analyzer launch.
+- **State:** This IS the state. TLP markings + Sirens-specific markings (`SIRENS:INTERNAL`, `SIRENS:ATTRIBUTION_DRAFT`, `SIRENS:ATTRIBUTION_VALIDATED`, `SIRENS:CUSTOMER_PRIVATE`) bootstrapped via `compose/bootstrap/opencti_markings.py`.
+- **MCP broker:** `sirens-mcp-opencti` (done, Phase 2), `mcp-server-misp` + `mcp-server-thehive` (vendored from gbrigandi), `mcp-server-cortex` (vendored).
+
 ---
 
 ## 4. Research Arm — Pipeline Spec
