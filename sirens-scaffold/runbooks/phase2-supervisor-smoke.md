@@ -113,7 +113,42 @@ In the Inspector UI, with `x-tasking-id: smoke-$(date +%s)`:
 
 ---
 
-## 5. Vendored MCP smoke tests
+## 5. Velociraptor MCP smoke test
+
+Prereqs: Velociraptor server running with at least one enrolled client.
+Generate an api-client config:
+
+```bash
+velociraptor config api_client --role=administrator \
+  api.config.yaml sirens-mcp
+```
+
+Place the file at `./secrets/velociraptor-api.config.yaml`.
+
+```bash
+cd mcp-servers/velociraptor
+pip install -e .
+export VELOCIRAPTOR_CONFIG=$(pwd)/../../compose/secrets/velociraptor-api.config.yaml
+npx @modelcontextprotocol/inspector sirens-mcp-velociraptor
+```
+
+With `x-tasking-id: smoke-$(date +%s)`:
+
+1. Call `list_clients` with `search: "all"`, `limit: 5` — expect ≥ 1 client.
+2. Call `list_artifacts` with `search: "^Generic\\.Client\\.Info$"` — expect 1.
+3. Call `collect_artifact` with a known-safe read-only artifact, e.g.
+   `Generic.Client.Info`, against the client from step 1. Expect a Flow
+   with `state: "RUNNING"`.
+4. Wait 30s, call `get_flow` — expect `state: "FINISHED"`.
+5. Call `get_flow_results` with `artifact: "Generic.Client.Info"` —
+   expect a row of metadata.
+6. Call `run_vql` with `query: "SELECT 1 AS ok FROM scope()"` and
+   NO active-authorization header — expect a permission error.
+7. Retry step 6 with `x-active-authorization: true` — expect `[{"ok": 1}]`.
+
+---
+
+## 6. Vendored MCP smoke tests
 
 For each of `wazuh`, `cortex`, `misp`, `thehive`:
 
@@ -128,7 +163,7 @@ Exit criteria: each vendored server answers its simplest read-only tool
 
 ---
 
-## 6. Exit criteria
+## 7. Exit criteria
 
 - [ ] `pytest tests/unit/test_supervisor_golden_path.py` green
 - [ ] IntelOwl MCP `list_analyzers` returns ≥ 20 entries
@@ -137,6 +172,8 @@ Exit criteria: each vendored server answers its simplest read-only tool
 - [ ] OpenCTI MCP refuses a call with no `x-tasking-id`
 - [ ] SpiderFoot MCP runs a Passive scan and returns a non-empty summary
 - [ ] SpiderFoot MCP refuses a non-Passive scan without `x-active-authorization`
+- [ ] Velociraptor MCP runs `Generic.Client.Info` end-to-end
+- [ ] Velociraptor MCP `run_vql` refuses without `x-active-authorization`
 - [ ] All four vendored MCP servers pass their upstream smoke test
 - [ ] Audit log written (inspect `$SIRENS_AUDIT_SINK` or stderr)
 

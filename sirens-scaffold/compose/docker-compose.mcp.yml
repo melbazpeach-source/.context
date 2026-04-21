@@ -48,6 +48,16 @@ services:
       SPIDERFOOT_PASSWORD: ${SPIDERFOOT_PASSWORD:-}
       SPIDERFOOT_TIMEOUT: "60"
 
+  mcp-velociraptor:
+    build:
+      context: ../mcp-servers/velociraptor
+    restart: *restart
+    environment:
+      VELOCIRAPTOR_CONFIG: /etc/velociraptor/api.config.yaml
+      VELOCIRAPTOR_TIMEOUT: "120"
+    volumes:
+      - ${VELOCIRAPTOR_CONFIG_PATH:-./secrets/velociraptor-api.config.yaml}:/etc/velociraptor/api.config.yaml:ro
+
   mcp-wazuh:
     build:
       context: ../mcp-servers/vendored/wazuh
