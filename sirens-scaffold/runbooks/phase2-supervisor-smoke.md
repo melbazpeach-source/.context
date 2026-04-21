@@ -50,7 +50,42 @@ supervisor's audit invariant.
 
 ---
 
-## 3. Vendored MCP smoke tests
+## 3. OpenCTI MCP smoke test
+
+Prereqs: OpenCTI reachable at `$OPENCTI_URL`, admin token in `$OPENCTI_TOKEN`.
+
+```bash
+cd mcp-servers/opencti
+pip install -e .
+export OPENCTI_URL=http://localhost:8080
+export OPENCTI_TOKEN=<OPENCTI_ADMIN_TOKEN from compose/.env>
+npx @modelcontextprotocol/inspector sirens-mcp-opencti
+```
+
+In the Inspector UI, with `x-tasking-id: smoke-$(date +%s)`:
+
+1. Call `list_reports` with `limit: 5` — expect the DFIR Report smoke
+   run's report from Phase 1 to appear.
+2. Call `create_indicator` with a safe test pattern, e.g.:
+   ```json
+   {
+     "payload": {
+       "pattern": "[ipv4-addr:value = '203.0.113.1']",
+       "name": "sirens-smoke-203.0.113.1",
+       "indicator_types": ["malicious-activity"],
+       "confidence": 10
+     }
+   }
+   ```
+3. Call `search_entities` with `query: "sirens-smoke"` — expect one hit.
+4. In OpenCTI UI, confirm the new indicator carries the
+   `sirens:tasking:smoke-...` label.
+
+Verify: any call without `x-tasking-id` is rejected.
+
+---
+
+## 4. Vendored MCP smoke tests
 
 For each of `wazuh`, `cortex`, `misp`, `thehive`:
 
@@ -65,11 +100,13 @@ Exit criteria: each vendored server answers its simplest read-only tool
 
 ---
 
-## 4. Exit criteria
+## 5. Exit criteria
 
 - [ ] `pytest tests/unit/test_supervisor_golden_path.py` green
 - [ ] IntelOwl MCP `list_analyzers` returns ≥ 20 entries
 - [ ] IntelOwl MCP refuses a call with no `x-tasking-id`
+- [ ] OpenCTI MCP creates + retrieves a tagged smoke indicator
+- [ ] OpenCTI MCP refuses a call with no `x-tasking-id`
 - [ ] All four vendored MCP servers pass their upstream smoke test
 - [ ] Audit log written (inspect `$SIRENS_AUDIT_SINK` or stderr)
 

@@ -28,6 +28,16 @@ services:
       INTELOWL_TIMEOUT: "30"
     # stdio transport — supervisor connects via docker exec; no host port.
 
+  mcp-opencti:
+    build:
+      context: ../mcp-servers/opencti
+    restart: *restart
+    depends_on: [opencti]
+    environment:
+      OPENCTI_URL: http://opencti:8080
+      OPENCTI_TOKEN: ${OPENCTI_ADMIN_TOKEN}
+      OPENCTI_SSL_VERIFY: "false"
+
   mcp-wazuh:
     build:
       context: ../mcp-servers/vendored/wazuh

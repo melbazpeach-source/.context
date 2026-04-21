@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sirens-mcp-opencti"
+version = "0.1.0"
+description = "MCP server wrapping OpenCTI"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=1.2",
+    "pycti==6.4.6",
+    "pydantic>=2.7",
+    "structlog>=24.1",
+]
+
+[project.scripts]
+sirens-mcp-opencti = "sirens_mcp_opencti.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["sirens_mcp_opencti"]
