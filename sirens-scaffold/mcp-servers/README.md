@@ -6,13 +6,13 @@ are vendored as git submodules. New servers Sirens writes live here.
 
 ## To write (in build order)
 
-| Server | Wraps | Phase |
-|---|---|---|
-| `intelowl/` | IntelOwl REST API | 2 |
-| `opencti/` | OpenCTI GraphQL | 2 |
-| `spiderfoot/` | SpiderFoot HX API | 3 |
-| `velociraptor/` | Velociraptor API | 6 |
-| `canarytokens/` | Canarytokens callbacks | 7 |
+| Server | Wraps | Phase | Status |
+|---|---|---|---|
+| `intelowl/` | IntelOwl REST API | 2 | ✔ written |
+| `opencti/` | OpenCTI GraphQL | 2 | pending |
+| `spiderfoot/` | SpiderFoot HX API | 3 | pending |
+| `velociraptor/` | Velociraptor API | 6 | pending |
+| `canarytokens/` | Canarytokens callbacks | 7 | pending |
 
 ## Convention
 

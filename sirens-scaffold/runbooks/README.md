@@ -6,6 +6,7 @@ Operator-facing playbooks. One file per scenario.
 |---|---|---|
 | `knowledge-spine-boot.md` | First-time bring-up of OpenCTI+MISP+TheHive+Cortex and feed connectors | 1 ✔ |
 | `phase1-smoke-test.md` | DFIR Report end-to-end STIX round-trip (Phase 1 exit gate) | 1 ✔ |
+| `phase2-supervisor-smoke.md` | Supervisor golden-path + IntelOwl MCP + vendored MCP smoke (Phase 2 exit) | 2 ✔ |
 | `oncall.md` | Pager rotation, escalation paths, SEV definitions | 0 |
 | `backup-restore.md` | Snapshot every persistent volume; test restore quarterly | 1 |
 | `key-rotation.md` | Rotate API keys, OPENCTI_ADMIN_TOKEN, MISP keys, MinIO creds | 1 |

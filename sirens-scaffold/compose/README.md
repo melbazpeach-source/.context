@@ -6,6 +6,7 @@ Compose stacks for local development and small-scale production.
 |---|---|
 | `docker-compose.knowledge.yml` | OpenCTI, MISP, TheHive, Cortex + shared deps (Elasticsearch, Redis, RabbitMQ, MinIO, Cassandra, MariaDB) |
 | `docker-compose.connectors.yml` | OpenCTI external-import connectors (MITRE, OTX, CISA KEV, URLhaus, MalwareBazaar, ThreatFox) |
+| `docker-compose.mcp.yml` | MCP servers (IntelOwl + vendored wazuh/cortex/misp/thehive) |
 | `bootstrap/` | Idempotent post-boot setup: Sirens marking taxonomy, MISP feed enable |
 
 Full step-by-step lives in `../runbooks/knowledge-spine-boot.md` and the
