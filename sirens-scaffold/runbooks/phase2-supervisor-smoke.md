@@ -148,7 +148,37 @@ With `x-tasking-id: smoke-$(date +%s)`:
 
 ---
 
-## 6. Vendored MCP smoke tests
+## 6. Canarytokens MCP smoke test
+
+Prereqs: `canarytokens-docker` stack running at `$CANARYTOKENS_URL`.
+
+```bash
+cd mcp-servers/canarytokens
+pip install -e .
+export CANARYTOKENS_URL=http://localhost:8080
+export CANARYTOKENS_ALLOWED_WEBHOOK_HOSTS=audit.sirens.internal
+npx @modelcontextprotocol/inspector sirens-mcp-canarytokens
+```
+
+With `x-tasking-id: smoke-$(date +%s)`:
+
+1. Call `list_token_types` — expect the `TokenType` enum values.
+2. Call `create_token` with:
+   ```json
+   { "payload": { "token_type": "dns", "memo": "sirens-smoke",
+                  "email": "you@example.local" } }
+   ```
+   Expect a `Token` with `canarytoken` resembling a subdomain and an `auth`.
+3. Trigger the token manually (e.g. `nslookup <canarytoken>`), wait ~30s.
+4. Call `get_token_history` with the token id and auth — expect ≥ 1 hit.
+5. Call `create_token` with `webhook_url: "https://evil.example.com/hook"`
+   — expect a permission error (webhook allow-list regression).
+6. Call `disable_token` — expect `{status: "disabled"}`. `get_token_history`
+   should still return prior hits but no new ones will arrive.
+
+---
+
+## 7. Vendored MCP smoke tests
 
 For each of `wazuh`, `cortex`, `misp`, `thehive`:
 
@@ -163,7 +193,7 @@ Exit criteria: each vendored server answers its simplest read-only tool
 
 ---
 
-## 7. Exit criteria
+## 8. Exit criteria
 
 - [ ] `pytest tests/unit/test_supervisor_golden_path.py` green
 - [ ] IntelOwl MCP `list_analyzers` returns ≥ 20 entries
@@ -174,6 +204,8 @@ Exit criteria: each vendored server answers its simplest read-only tool
 - [ ] SpiderFoot MCP refuses a non-Passive scan without `x-active-authorization`
 - [ ] Velociraptor MCP runs `Generic.Client.Info` end-to-end
 - [ ] Velociraptor MCP `run_vql` refuses without `x-active-authorization`
+- [ ] Canarytokens MCP creates a DNS token and records a triggered hit
+- [ ] Canarytokens MCP refuses a webhook URL outside the allow-list
 - [ ] All four vendored MCP servers pass their upstream smoke test
 - [ ] Audit log written (inspect `$SIRENS_AUDIT_SINK` or stderr)
 

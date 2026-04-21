@@ -58,6 +58,15 @@ services:
     volumes:
       - ${VELOCIRAPTOR_CONFIG_PATH:-./secrets/velociraptor-api.config.yaml}:/etc/velociraptor/api.config.yaml:ro
 
+  mcp-canarytokens:
+    build:
+      context: ../mcp-servers/canarytokens
+    restart: *restart
+    environment:
+      CANARYTOKENS_URL: ${CANARYTOKENS_URL:-http://canarytokens:8080}
+      CANARYTOKENS_TIMEOUT: "30"
+      CANARYTOKENS_ALLOWED_WEBHOOK_HOSTS: ${CANARYTOKENS_ALLOWED_WEBHOOK_HOSTS:-}
+
   mcp-wazuh:
     build:
       context: ../mcp-servers/vendored/wazuh

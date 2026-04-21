@@ -12,7 +12,7 @@ are vendored as git submodules. New servers Sirens writes live here.
 | `opencti/` | OpenCTI GraphQL (via pycti) | 2 | ✔ written |
 | `spiderfoot/` | SpiderFoot OSS REST | 2 | ✔ written |
 | `velociraptor/` | Velociraptor gRPC (via pyvelociraptor) | 2 | ✔ written |
-| `canarytokens/` | Canarytokens callbacks | 7 | pending |
+| `canarytokens/` | Canarytokens self-hosted REST | 2 | ✔ written |
 
 ## Convention
 
