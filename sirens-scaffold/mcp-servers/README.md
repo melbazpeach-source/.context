@@ -10,7 +10,7 @@ are vendored as git submodules. New servers Sirens writes live here.
 |---|---|---|---|
 | `intelowl/` | IntelOwl REST API | 2 | ✔ written |
 | `opencti/` | OpenCTI GraphQL (via pycti) | 2 | ✔ written |
-| `spiderfoot/` | SpiderFoot HX API | 3 | pending |
+| `spiderfoot/` | SpiderFoot OSS REST | 2 | ✔ written |
 | `velociraptor/` | Velociraptor API | 6 | pending |
 | `canarytokens/` | Canarytokens callbacks | 7 | pending |
 

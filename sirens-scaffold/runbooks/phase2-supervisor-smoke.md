@@ -85,7 +85,35 @@ Verify: any call without `x-tasking-id` is rejected.
 
 ---
 
-## 4. Vendored MCP smoke tests
+## 4. SpiderFoot MCP smoke test
+
+Prereqs: SpiderFoot OSS reachable (e.g. `http://localhost:5001`). No auth
+required for OSS default.
+
+```bash
+cd mcp-servers/spiderfoot
+pip install -e .
+export SPIDERFOOT_URL=http://localhost:5001
+npx @modelcontextprotocol/inspector sirens-mcp-spiderfoot
+```
+
+In the Inspector UI, with `x-tasking-id: smoke-$(date +%s)`:
+
+1. Call `list_modules` — expect ≥ 200 entries.
+2. Call `start_scan` with `{ "target": "example.com", "name": "sirens-smoke",
+   "usecase": "Passive" }`. Expect a Scan record with `status: "CREATED"`
+   or `"STARTING"`.
+3. After ~2 min, call `get_scan_summary` with the returned id — expect
+   at least one non-zero event-type row.
+4. Call `start_scan` with `usecase: "Footprint"` and NO
+   `x-active-authorization` header — expect a permission error. This
+   is the ethics-gate regression.
+5. Retry step 4 with header `x-active-authorization: true` — expect
+   success. Abort with `stop_scan`.
+
+---
+
+## 5. Vendored MCP smoke tests
 
 For each of `wazuh`, `cortex`, `misp`, `thehive`:
 
@@ -100,13 +128,15 @@ Exit criteria: each vendored server answers its simplest read-only tool
 
 ---
 
-## 5. Exit criteria
+## 6. Exit criteria
 
 - [ ] `pytest tests/unit/test_supervisor_golden_path.py` green
 - [ ] IntelOwl MCP `list_analyzers` returns ≥ 20 entries
 - [ ] IntelOwl MCP refuses a call with no `x-tasking-id`
 - [ ] OpenCTI MCP creates + retrieves a tagged smoke indicator
 - [ ] OpenCTI MCP refuses a call with no `x-tasking-id`
+- [ ] SpiderFoot MCP runs a Passive scan and returns a non-empty summary
+- [ ] SpiderFoot MCP refuses a non-Passive scan without `x-active-authorization`
 - [ ] All four vendored MCP servers pass their upstream smoke test
 - [ ] Audit log written (inspect `$SIRENS_AUDIT_SINK` or stderr)
 

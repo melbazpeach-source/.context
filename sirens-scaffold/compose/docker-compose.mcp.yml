@@ -38,6 +38,16 @@ services:
       OPENCTI_TOKEN: ${OPENCTI_ADMIN_TOKEN}
       OPENCTI_SSL_VERIFY: "false"
 
+  mcp-spiderfoot:
+    build:
+      context: ../mcp-servers/spiderfoot
+    restart: *restart
+    environment:
+      SPIDERFOOT_URL: ${SPIDERFOOT_URL:-http://spiderfoot:5001}
+      SPIDERFOOT_USER: ${SPIDERFOOT_USER:-}
+      SPIDERFOOT_PASSWORD: ${SPIDERFOOT_PASSWORD:-}
+      SPIDERFOOT_TIMEOUT: "60"
+
   mcp-wazuh:
     build:
       context: ../mcp-servers/vendored/wazuh
