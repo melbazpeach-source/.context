@@ -5,6 +5,11 @@ Compose stacks for local development and small-scale production.
 | File | Brings up |
 |---|---|
 | `docker-compose.knowledge.yml` | OpenCTI, MISP, TheHive, Cortex + shared deps (Elasticsearch, Redis, RabbitMQ, MinIO, Cassandra, MariaDB) |
+| `docker-compose.connectors.yml` | OpenCTI external-import connectors (MITRE, OTX, CISA KEV, URLhaus, MalwareBazaar, ThreatFox) |
+| `bootstrap/` | Idempotent post-boot setup: Sirens marking taxonomy, MISP feed enable |
+
+Full step-by-step lives in `../runbooks/knowledge-spine-boot.md` and the
+Phase 1 exit test in `../runbooks/phase1-smoke-test.md`.
 
 ## Quick start (Phase 1 knowledge spine)
 
