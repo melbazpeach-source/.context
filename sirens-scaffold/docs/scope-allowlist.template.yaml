@@ -1,0 +1,111 @@
+# ----------------------------------------------------------------------------
+# Sirens — scope allow-list (template)
+#
+# One file per engagement. The supervisor refuses any tasking whose targets,
+# posture, or collectors are not explicitly enumerated here.
+#
+# Replace every <PLACEHOLDER>. Counsel must sign off before this file is
+# loaded into the supervisor's policy store.
+# ----------------------------------------------------------------------------
+
+allowlist_id: <ENGAGEMENT_SLUG>            # e.g. "acme-q2-2026-tracking"
+schema_version: "1.0.0"
+
+engagement:
+  customer: <CUSTOMER_NAME>
+  contract_reference: <CONTRACT_OR_TICKET>
+  starts_at: <YYYY-MM-DDTHH:MM:SSZ>
+  ends_at:   <YYYY-MM-DDTHH:MM:SSZ>
+  point_of_contact:
+    name:  <NAME>
+    email: <EMAIL>
+
+approvals:
+  legal:
+    approver: <LAWYER_NAME>
+    approved_at: <YYYY-MM-DDTHH:MM:SSZ>
+    reference: <FILE/TICKET>
+  customer:
+    approver: <CUSTOMER_SIGNATORY>
+    approved_at: <YYYY-MM-DDTHH:MM:SSZ>
+    reference: <SIGNED_AUTHORIZATION>
+
+posture: passive_public
+# One of:
+#   passive_public         — read-only OSINT against attacker infra and public sources
+#   deception_internal     — canaries / honeypots on customer-owned infra only
+#   deception_authorized   — sinkholes of domains we own / are authorized to control
+
+targets:
+  # What Sirens MAY investigate. Anything not listed is out of scope.
+  domains:
+    - <example.tld>
+  ips:
+    - <198.51.100.0/24>
+  asns:
+    - <AS64500>
+  file_hashes:
+    - <sha256:...>
+  actors:
+    - <Scattered Spider>
+  malware_families:
+    - <Akira>
+  cves:
+    - <CVE-2026-0001>
+  campaigns: []
+  report_urls:
+    - <https://thedfirreport.com/...>
+
+restrictions:
+  # Hard exclusions, even if they match a target above.
+  domains: []
+  ips: []
+  countries: []                       # ISO-3166 alpha-2; e.g. ["RU","KP"] if forbidden
+  data_classes:
+    - PII_individual                  # never retained per-individual
+    - protected_health_information
+    - children_minors
+
+collectors:
+  # Which Sirens collectors are enabled for THIS engagement.
+  # Names must match the collector registry in agents/research/collectors/.
+  enabled:
+    - abuse_ch.malwarebazaar
+    - abuse_ch.urlhaus
+    - abuse_ch.threatfox
+    - alienvault.otx
+    - nvd
+    - cisa.kev
+    - virustotal.public
+    - shodan.free
+    - censys.free
+    - greynoise.community
+    - github.api
+    - nuclei_templates
+    - poc_in_github
+    - the_dfir_report
+  disabled:
+    - virustotal.intelligence         # paid; off unless engagement licenses it
+    - farsight.dnsdb
+    - recorded_future
+    - mandiant
+    - flashpoint
+    - intel471
+    - dark_web.tor                    # not without explicit approval
+
+active_capabilities:
+  # Each entry must reference an Authorization record on file. Default: empty.
+  honey_tokens: []
+  honeypots: []
+  sinkholes: []
+  decoy_interactions: []
+
+budget:
+  max_cost_usd_per_day: 50
+  max_cost_usd_per_engagement: 1500
+  max_input_tokens_per_day: 5000000
+  max_output_tokens_per_day: 1000000
+
+sharing:
+  default_tlp: TLP:AMBER
+  external_communities: []            # e.g. ["MISP-FIRST", "ISAC-FS"]
