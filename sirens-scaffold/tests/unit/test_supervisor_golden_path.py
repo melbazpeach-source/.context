@@ -45,6 +45,7 @@ def allowlist() -> ScopeAllowlist:
         targets=TargetSet(
             report_urls=["https://thedfirreport.com/2026/01/example"],
             actors=["Scattered Spider"],
+            cves=["CVE-2026-0001"],
         ),
         collectors=Collectors(enabled=["abuse_ch.malwarebazaar", "alienvault.otx"]),
     )
@@ -191,6 +192,30 @@ def test_dispatch_folds_subgraph_audit_into_ledger(
     assert ledger["output_tokens"] == 567
     assert ledger["cost_usd"] == pytest.approx(0.42)
     assert ledger["tool_calls"] == 3
+
+
+def test_hunt_ttp_tasking_routes_to_hunt_swarm(
+    allowlist: ScopeAllowlist,
+) -> None:
+    """HUNT_TTP tasking → supervisor dispatches into the Hunt subgraph."""
+    hunt_tasking = Tasking(
+        requester="analyst@sirens",
+        type=TaskingType.HUNT_TTP,
+        targets=[Target(kind=TargetKind.CVE, value="CVE-2026-0001")],
+        posture=Posture.PASSIVE_PUBLIC,
+    )
+    app = build_supervisor_graph(allowlist)
+    result = app.invoke({"tasking": hunt_tasking, "run_id": uuid4()})
+
+    assert result["done"] is True
+    assert result["next_swarm"] == "hunt"
+
+    messages = result["messages"]
+    assert len(messages) == 2
+    assert messages[0].payload == {"dispatched_to": "hunt"}
+    assert messages[1].payload_type is PayloadType.REPORT
+    assert messages[1].swarm == "hunt"
+    assert messages[1].from_agent == "hunt.escalator"
 
 
 def test_subgraph_overspend_trips_budget_gate(

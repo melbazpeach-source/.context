@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any
 
 
 if TYPE_CHECKING:
+    from agents.hunt import HuntDispatch
     from agents.research import ResearchDispatch
 
 
@@ -23,19 +24,22 @@ SwarmRegistry = dict[str, Any]
 
 def build_default_swarms(
     research_dispatch: "ResearchDispatch | None" = None,
+    hunt_dispatch: "HuntDispatch | None" = None,
 ) -> SwarmRegistry:
     """Build the default registry.
 
-    Only the Research swarm is wired. Passing `research_dispatch=None` falls
-    back to `StubDispatch` — the supervisor golden-path test runs in this mode.
+    Research and Hunt are wired. Passing `*_dispatch=None` falls back to each
+    swarm's `StubDispatch` — the supervisor golden-path test runs in this mode.
 
-    Imports are deferred to call-time: importing `agents.research` eagerly at
-    module load would create a cycle via `agents.supervisor.middleware.audit`,
-    which Research nodes depend on.
+    Imports are deferred to call-time: importing the swarms eagerly at module
+    load would create a cycle via `agents.supervisor.middleware.audit`, which
+    the swarm nodes depend on.
     """
+    from agents.hunt import build_hunt_graph
     from agents.research import build_research_graph
 
     return {
         "research": build_research_graph(research_dispatch),
-        # Phase 4+: add hunt / ir / detection / deception subgraphs here.
+        "hunt": build_hunt_graph(hunt_dispatch),
+        # Phase 5+: add ir / detection / deception subgraphs here.
     }
