@@ -34,7 +34,6 @@ def write_audit(state: SupervisorState, event: str, **extra: Any) -> None:
     """Record one event. Never raises — audit failure must not break flow."""
     record = {
         "ts": datetime.now(timezone.utc).isoformat(),
-        "event": event,
         "run_id": str(state.get("run_id")) if state.get("run_id") else None,
         "tasking_id": (
             str(state["tasking"].tasking_id) if state.get("tasking") else None
@@ -48,7 +47,7 @@ def write_audit(state: SupervisorState, event: str, **extra: Any) -> None:
         sink = _sink()
         if sink is not None:
             with sink.open("a", encoding="utf-8") as f:
-                f.write(json.dumps(record, default=str) + "\n")
+                f.write(json.dumps({"event": event, **record}, default=str) + "\n")
         else:
             _logger.info(event, **record)
     except Exception as exc:  # noqa: BLE001 — audit is best-effort
