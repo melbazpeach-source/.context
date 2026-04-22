@@ -75,26 +75,57 @@ def plan(state: SupervisorState) -> dict:
 
 
 def dispatch(state: SupervisorState) -> dict:
-    """Hand off to the selected swarm.
+    """Deprecated — use make_dispatch(swarms). Kept for backwards compat."""
+    return make_dispatch({})(state)
 
-    Phase 2 stub: emits a STATUS AgentMessage confirming dispatch. Phase 3+
-    calls into the swarm's entry node (research/__init__.py:entrypoint etc.).
-    """
-    swarm = state["next_swarm"] or "research"
-    msg = AgentMessage(
-        tasking_id=state["tasking"].tasking_id,
-        from_agent="supervisor.dispatch",
-        to_agent=None,
-        swarm="supervisor",
-        payload_type=PayloadType.STATUS,
-        payload={"dispatched_to": swarm},
-    )
-    update = {
-        "current_step": "dispatch",
-        "messages": [msg],
-    }
-    write_audit({**state, **update}, event="dispatch", swarm=swarm)
-    return update
+
+def make_dispatch(swarms: dict):
+    """Factory that binds the swarm registry to the dispatch closure."""
+
+    def dispatch(state: SupervisorState) -> dict:
+        """Hand off to the selected swarm.
+
+        Always emits a STATUS preamble (`dispatched_to=<swarm>`). If the swarm
+        is registered in `swarms`, invoke the compiled subgraph and append its
+        messages to the supervisor's message list. Otherwise STATUS-only — the
+        swarm isn't built yet.
+        """
+        swarm = state["next_swarm"] or "research"
+        out_messages = [
+            AgentMessage(
+                tasking_id=state["tasking"].tasking_id,
+                from_agent="supervisor.dispatch",
+                to_agent=None,
+                swarm="supervisor",
+                payload_type=PayloadType.STATUS,
+                payload={"dispatched_to": swarm},
+            )
+        ]
+
+        sub_app = swarms.get(swarm)
+        if sub_app is not None:
+            sub_result = sub_app.invoke(
+                {
+                    "tasking": state["tasking"],
+                    "run_id": state.get("run_id"),
+                }
+            )
+            out_messages.extend(sub_result.get("messages", []))
+
+        update = {
+            "current_step": "dispatch",
+            "messages": out_messages,
+        }
+        write_audit(
+            {**state, **update},
+            event="dispatch",
+            swarm=swarm,
+            subgraph_invoked=sub_app is not None,
+            sub_message_count=len(out_messages) - 1,
+        )
+        return update
+
+    return dispatch
 
 
 def finalize(state: SupervisorState) -> dict:

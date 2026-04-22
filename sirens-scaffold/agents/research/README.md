@@ -44,15 +44,29 @@ print(result["report"].narrative)
 
 ## Integration with the supervisor
 
-Not wired in this kickoff. The supervisor's `dispatch` node currently emits a
-STATUS message naming `"research"` as the next swarm. Phase 3.1 adds:
+Wired. `agents/supervisor/subgraphs.py` registers the Research graph under
+`"research"`. When the supervisor's `dispatch` node sees `next_swarm ==
+"research"`, it:
 
-1. `agents/supervisor/subgraphs.py` holding compiled swarm graphs keyed by
-   `next_swarm` string.
-2. `dispatch` invokes the matching subgraph with the current Tasking, merges
-   the returned report into the outer state, and proceeds to `finalize`.
-3. Budget/ rate-limit middleware spans the subgraph call, not just the
-   supervisor nodes.
+1. Emits a STATUS preamble (`dispatched_to=research`).
+2. Invokes the Research subgraph with the Tasking and `run_id`.
+3. Appends the subgraph's messages (including the REPORT) onto the
+   supervisor's message list.
+
+Callers wire a `LiveDispatch` by passing a custom registry:
+
+```python
+from agents.supervisor import build_supervisor_graph
+from agents.supervisor.subgraphs import build_default_swarms
+
+app = build_supervisor_graph(
+    allowlist,
+    swarms=build_default_swarms(research_dispatch=my_live_dispatch),
+)
+```
+
+Still deferred to Phase 3.1: merging subgraph token / cost attribution back
+onto the supervisor's `BudgetLedger` before `finalize` runs.
 
 ## What's not built yet (tickets for Phase 3.1+)
 

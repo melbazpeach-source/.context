@@ -73,12 +73,21 @@ def test_golden_path(allowlist: ScopeAllowlist, tasking: Tasking) -> None:
     assert result.get("violations", []) == [], result["violations"]
     assert result["next_swarm"] == "research"
 
+    # After Phase 3 hand-off: supervisor emits a STATUS preamble, then the
+    # Research subgraph runs and appends its own REPORT message.
     messages = result.get("messages", [])
-    assert len(messages) == 1
-    msg = messages[0]
-    assert msg.payload_type is PayloadType.STATUS
-    assert msg.payload == {"dispatched_to": "research"}
-    assert msg.from_agent == "supervisor.dispatch"
+    assert len(messages) == 2, messages
+
+    status = messages[0]
+    assert status.payload_type is PayloadType.STATUS
+    assert status.payload == {"dispatched_to": "research"}
+    assert status.from_agent == "supervisor.dispatch"
+
+    report = messages[1]
+    assert report.payload_type is PayloadType.REPORT
+    assert report.from_agent == "research.reporter"
+    assert report.swarm == "research"
+    assert report.payload["observable_count"] == 0  # StubDispatch, no live data
 
 
 def test_out_of_scope_target_blocks(allowlist: ScopeAllowlist) -> None:

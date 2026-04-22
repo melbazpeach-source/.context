@@ -117,33 +117,78 @@ call — the MCP servers refuse calls without it.
 
 ---
 
-## 4. Supervisor hand-off (deferred to Phase 3.1)
+## 4. Supervisor hand-off (wired)
 
-The supervisor's `dispatch` node still only emits a STATUS message naming
-`"research"`. Before Phase 3.1 exit, wire it to invoke the Research graph:
+The supervisor's `dispatch` node now invokes the Research subgraph when
+`next_swarm == "research"`. Implementation lives in:
 
-```python
-# agents/supervisor/subgraphs.py (to write)
-from agents.research import build_research_graph
+- `agents/supervisor/subgraphs.py` — `SwarmRegistry` = `dict[str, Any]`;
+  `build_default_swarms(research_dispatch)` wires Research with
+  `StubDispatch` by default, or a `LiveDispatch` passed in by the caller.
+- `agents/supervisor/nodes.py` — `make_dispatch(swarms)` is a factory; the
+  inner closure always emits a STATUS preamble, then invokes
+  `swarms[next_swarm]` if registered and appends its messages.
+- `agents/supervisor/graph.py` — `build_supervisor_graph(allowlist,
+  swarms=None)` takes an optional registry so callers can inject live-wired
+  subgraphs.
 
-_RESEARCH_GRAPH = None
+End-to-end smoke (no infra, no API keys):
 
-def research_subgraph(dispatch):
-    global _RESEARCH_GRAPH
-    if _RESEARCH_GRAPH is None:
-        _RESEARCH_GRAPH = build_research_graph(dispatch)
-    return _RESEARCH_GRAPH
+```bash
+python - <<'PY'
+from datetime import datetime, timedelta, timezone
+from uuid import uuid4
+from agents.supervisor import build_supervisor_graph
+from agents.supervisor.policy import (
+    ApprovalRecord, Approvals, Collectors, EngagementMeta,
+    ScopeAllowlist, TargetSet,
+)
+from schemas.tasking import Posture, Target, TargetKind, Tasking, TaskingType
+
+now = datetime.now(timezone.utc)
+al = ScopeAllowlist(
+    allowlist_id="demo",
+    engagement=EngagementMeta(
+        customer="TestCo",
+        starts_at=now - timedelta(days=1),
+        ends_at=now + timedelta(days=30),
+    ),
+    approvals=Approvals(legal=ApprovalRecord(
+        approver="counsel@testco", approved_at=now,
+    )),
+    posture=Posture.PASSIVE_PUBLIC,
+    targets=TargetSet(actors=["Scattered Spider"]),
+    collectors=Collectors(enabled=["shodan"]),
+)
+t = Tasking(
+    requester="demo@sirens",
+    type=TaskingType.TRACK_ACTOR,
+    targets=[Target(kind=TargetKind.ACTOR, value="Scattered Spider")],
+    posture=Posture.PASSIVE_PUBLIC,
+)
+result = build_supervisor_graph(al).invoke({"tasking": t, "run_id": uuid4()})
+for m in result["messages"]:
+    print(m.swarm, m.from_agent, m.payload_type.value)
+PY
 ```
 
-Then in `agents/supervisor/nodes.py:dispatch`, when `next_swarm == "research"`:
+Expected:
 
-1. Invoke the Research subgraph with the current Tasking and a `LiveDispatch`.
-2. Merge the returned `ResearchReport` into the supervisor's message list.
-3. Attribute token / cost usage from Research back onto the supervisor's
-   `BudgetLedger` before `finalize` runs.
+```
+supervisor supervisor.dispatch status
+research   research.reporter   report
+```
 
-The supervisor's existing budget-violation path in `finalize` handles the
-ledger check — no new middleware needed for the kickoff.
+Remaining for Phase 3.1:
+
+1. Build `LiveDispatch(ResearchDispatch)` that binds MCP clients (IntelOwl,
+   OpenCTI, SpiderFoot, Canarytokens, Velociraptor) + a Claude client for
+   `narrate` + the `stix2` builder for `build_stix_bundle`.
+2. Pass it through:
+   `build_supervisor_graph(allowlist, swarms=build_default_swarms(live))`.
+3. Merge token / cost attribution from the subgraph's AgentMessage audits
+   back onto the supervisor's `BudgetLedger` before `finalize` — without
+   this, subgraph spend is invisible to the budget gate.
 
 ---
 
