@@ -17,8 +17,31 @@ from agents.supervisor.middleware import (
     write_audit,
 )
 from agents.supervisor.policy import ScopeAllowlist
-from agents.supervisor.state import SupervisorState, Violation, new_ledger
+from agents.supervisor.state import BudgetLedger, SupervisorState, Violation, new_ledger
 from schemas.agent_message import AgentMessage, PayloadType
+
+
+def _merge_audit_into_ledger(
+    ledger: BudgetLedger,
+    messages: list[AgentMessage],
+) -> BudgetLedger:
+    """Fold the audit fields of downstream messages into the supervisor ledger.
+
+    Called after the dispatch node invokes a subgraph. Without this, any
+    token / cost spent inside the subgraph is invisible to `check_budget`
+    and the budget ceiling is unenforceable.
+    """
+    delta_in = sum(m.audit.input_tokens for m in messages)
+    delta_out = sum(m.audit.output_tokens for m in messages)
+    delta_cost = sum(m.audit.cost_usd for m in messages)
+    delta_calls = sum(len(m.audit.tool_calls) for m in messages)
+    return BudgetLedger(
+        input_tokens=ledger["input_tokens"] + delta_in,
+        output_tokens=ledger["output_tokens"] + delta_out,
+        cost_usd=ledger["cost_usd"] + delta_cost,
+        tool_calls=ledger["tool_calls"] + delta_calls,
+        started_at=ledger["started_at"],
+    )
 
 
 def make_intake(allowlist: ScopeAllowlist):
@@ -103,6 +126,7 @@ def make_dispatch(swarms: dict):
         ]
 
         sub_app = swarms.get(swarm)
+        sub_messages: list[AgentMessage] = []
         if sub_app is not None:
             sub_result = sub_app.invoke(
                 {
@@ -110,18 +134,27 @@ def make_dispatch(swarms: dict):
                     "run_id": state.get("run_id"),
                 }
             )
-            out_messages.extend(sub_result.get("messages", []))
+            sub_messages = sub_result.get("messages", [])
+            out_messages.extend(sub_messages)
 
-        update = {
+        update: dict = {
             "current_step": "dispatch",
             "messages": out_messages,
         }
+
+        # Fold subgraph audit into the ledger so `finalize`'s budget gate
+        # can see downstream spend. The STATUS preamble is the supervisor's
+        # own message and carries zero audit — don't charge it.
+        ledger = state.get("ledger")
+        if ledger is not None and sub_messages:
+            update["ledger"] = _merge_audit_into_ledger(ledger, sub_messages)
+
         write_audit(
             {**state, **update},
             event="dispatch",
             swarm=swarm,
             subgraph_invoked=sub_app is not None,
-            sub_message_count=len(out_messages) - 1,
+            sub_message_count=len(sub_messages),
         )
         return update
 

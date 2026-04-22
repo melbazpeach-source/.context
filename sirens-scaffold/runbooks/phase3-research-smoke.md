@@ -179,6 +179,12 @@ supervisor supervisor.dispatch status
 research   research.reporter   report
 ```
 
+Subgraph audit totals now fold into the supervisor's `BudgetLedger`
+automatically. `dispatch` sums `AgentMessage.audit.{input_tokens,
+output_tokens, cost_usd, tool_calls}` across every message the subgraph
+returned and writes the updated ledger into state. `finalize`'s existing
+`check_budget` then sees the merged totals.
+
 Remaining for Phase 3.1:
 
 1. Build `LiveDispatch(ResearchDispatch)` that binds MCP clients (IntelOwl,
@@ -186,9 +192,9 @@ Remaining for Phase 3.1:
    `narrate` + the `stix2` builder for `build_stix_bundle`.
 2. Pass it through:
    `build_supervisor_graph(allowlist, swarms=build_default_swarms(live))`.
-3. Merge token / cost attribution from the subgraph's AgentMessage audits
-   back onto the supervisor's `BudgetLedger` before `finalize` — without
-   this, subgraph spend is invisible to the budget gate.
+3. Ensure every LiveDispatch tool call records accurate `Audit.input_tokens
+   / output_tokens / cost_usd / tool_calls` on the AgentMessage it produces
+   — the budget gate is only as good as the audit blocks the swarm emits.
 
 ---
 
