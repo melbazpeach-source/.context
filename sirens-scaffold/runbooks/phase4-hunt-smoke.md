@@ -151,7 +151,10 @@ without it.
 
 1. Escalation threshold should live in the scope allow-list
    (`hunt_policy.escalation_threshold`) not the build call.
-2. Sigma rule-pack as a git submodule next to `skills/`.
+2. ~~Sigma rule-pack as a git submodule.~~ Done — vendored at
+   `sirens-scaffold/rules/sigma/` (SigmaHQ/sigma). LiveDispatch's
+   `write_queries` will load YAML from there, translate via `pysigma` +
+   `pysigma-backend-opensearch`, and emit `SigmaQuery` per candidate.
 3. A Hunt-side integration test using a temp Wazuh indexer (ephemeral
    Docker) rather than stub — behind the `integration` marker.
 4. Feedback loop: when the hunter returns zero hits but the Analyst

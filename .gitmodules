@@ -1,3 +1,6 @@
 [submodule "sirens-scaffold/skills/anthropic-cybersecurity-skills"]
 	path = sirens-scaffold/skills/anthropic-cybersecurity-skills
 	url = https://github.com/mukul975/Anthropic-Cybersecurity-Skills
+[submodule "sirens-scaffold/rules/sigma"]
+	path = sirens-scaffold/rules/sigma
+	url = https://github.com/SigmaHQ/sigma
