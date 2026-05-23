@@ -1,0 +1,105 @@
+# ----------------------------------------------------------------------------
+# Sirens — MCP server layer (Phase 2)
+# Brings up the MCP servers the supervisor can dispatch to.
+# Layer on top of knowledge + connectors:
+#   docker compose \
+#     -f docker-compose.knowledge.yml \
+#     -f docker-compose.connectors.yml \
+#     -f docker-compose.mcp.yml \
+#     up -d
+#
+# Vendored servers (wazuh, cortex, misp, thehive) build from git submodules
+# under ../mcp-servers/vendored/. Run `git submodule update --init` first.
+# ----------------------------------------------------------------------------
+
+name: sirens-knowledge
+
+x-restart-policy: &restart unless-stopped
+
+services:
+
+  mcp-intelowl:
+    build:
+      context: ../mcp-servers/intelowl
+    restart: *restart
+    environment:
+      INTELOWL_URL: ${INTELOWL_URL:-http://intelowl:80}
+      INTELOWL_TOKEN: ${INTELOWL_TOKEN}
+      INTELOWL_TIMEOUT: "30"
+    # stdio transport — supervisor connects via docker exec; no host port.
+
+  mcp-opencti:
+    build:
+      context: ../mcp-servers/opencti
+    restart: *restart
+    depends_on: [opencti]
+    environment:
+      OPENCTI_URL: http://opencti:8080
+      OPENCTI_TOKEN: ${OPENCTI_ADMIN_TOKEN}
+      OPENCTI_SSL_VERIFY: "false"
+
+  mcp-spiderfoot:
+    build:
+      context: ../mcp-servers/spiderfoot
+    restart: *restart
+    environment:
+      SPIDERFOOT_URL: ${SPIDERFOOT_URL:-http://spiderfoot:5001}
+      SPIDERFOOT_USER: ${SPIDERFOOT_USER:-}
+      SPIDERFOOT_PASSWORD: ${SPIDERFOOT_PASSWORD:-}
+      SPIDERFOOT_TIMEOUT: "60"
+
+  mcp-velociraptor:
+    build:
+      context: ../mcp-servers/velociraptor
+    restart: *restart
+    environment:
+      VELOCIRAPTOR_CONFIG: /etc/velociraptor/api.config.yaml
+      VELOCIRAPTOR_TIMEOUT: "120"
+    volumes:
+      - ${VELOCIRAPTOR_CONFIG_PATH:-./secrets/velociraptor-api.config.yaml}:/etc/velociraptor/api.config.yaml:ro
+
+  mcp-canarytokens:
+    build:
+      context: ../mcp-servers/canarytokens
+    restart: *restart
+    environment:
+      CANARYTOKENS_URL: ${CANARYTOKENS_URL:-http://canarytokens:8080}
+      CANARYTOKENS_TIMEOUT: "30"
+      CANARYTOKENS_ALLOWED_WEBHOOK_HOSTS: ${CANARYTOKENS_ALLOWED_WEBHOOK_HOSTS:-}
+
+  mcp-wazuh:
+    build:
+      context: ../mcp-servers/vendored/wazuh
+    restart: *restart
+    environment:
+      WAZUH_API_URL: ${WAZUH_API_URL}
+      WAZUH_API_USER: ${WAZUH_API_USER}
+      WAZUH_API_PASSWORD: ${WAZUH_API_PASSWORD}
+
+  mcp-cortex:
+    build:
+      context: ../mcp-servers/vendored/cortex
+    restart: *restart
+    depends_on: [cortex]
+    environment:
+      CORTEX_URL: http://cortex:9001
+      CORTEX_API_KEY: ${CORTEX_API_KEY}
+
+  mcp-misp:
+    build:
+      context: ../mcp-servers/vendored/misp
+    restart: *restart
+    depends_on: [misp]
+    environment:
+      MISP_URL: ${MISP_BASE_URL}
+      MISP_API_KEY: ${MISP_ADMIN_KEY}
+      MISP_VERIFY_TLS: "false"
+
+  mcp-thehive:
+    build:
+      context: ../mcp-servers/vendored/thehive
+    restart: *restart
+    depends_on: [thehive]
+    environment:
+      THEHIVE_URL: http://thehive:9000
+      THEHIVE_API_KEY: ${THEHIVE_API_KEY}

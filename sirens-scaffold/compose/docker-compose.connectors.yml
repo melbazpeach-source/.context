@@ -1,0 +1,112 @@
+# ----------------------------------------------------------------------------
+# Sirens — OpenCTI external-import connectors (Phase 1)
+# Layer on top of docker-compose.knowledge.yml:
+#   docker compose \
+#     -f docker-compose.knowledge.yml \
+#     -f docker-compose.connectors.yml \
+#     up -d
+# ----------------------------------------------------------------------------
+
+name: sirens-knowledge
+
+x-connector-env: &connector-env
+  OPENCTI_URL: http://opencti:8080
+  OPENCTI_TOKEN: ${OPENCTI_ADMIN_TOKEN}
+  CONNECTOR_TYPE: EXTERNAL_IMPORT
+  CONNECTOR_LOG_LEVEL: info
+
+x-restart-policy: &restart unless-stopped
+
+services:
+
+  connector-mitre:
+    image: opencti/connector-mitre:6.4.6
+    restart: *restart
+    depends_on: [opencti]
+    environment:
+      <<: *connector-env
+      CONNECTOR_ID: ${CONNECTOR_MITRE_ID}
+      CONNECTOR_NAME: "MITRE Datasets"
+      CONNECTOR_SCOPE: "tool,report,malware,identity,campaign,intrusion-set,attack-pattern,course-of-action,x-mitre-data-source,x-mitre-data-component,x-mitre-matrix,x-mitre-tactic,x-mitre-collection"
+      MITRE_INTERVAL: "7"  # days
+      MITRE_REMOVE_STATEMENT_MARKING: "true"
+
+  connector-alienvault:
+    image: opencti/connector-alienvault:6.4.6
+    restart: *restart
+    depends_on: [opencti]
+    environment:
+      <<: *connector-env
+      CONNECTOR_ID: ${CONNECTOR_ALIENVAULT_ID}
+      CONNECTOR_NAME: "AlienVault OTX"
+      CONNECTOR_SCOPE: "alienvault"
+      ALIENVAULT_BASE_URL: "https://otx.alienvault.com"
+      ALIENVAULT_API_KEY: ${ALIENVAULT_API_KEY}
+      ALIENVAULT_TLP: "White"
+      ALIENVAULT_CREATE_OBSERVABLES: "true"
+      ALIENVAULT_CREATE_INDICATORS: "true"
+      ALIENVAULT_PULSE_START_TIMESTAMP: "2024-01-01T00:00:00"
+      ALIENVAULT_REPORT_TYPE: "threat-report"
+      ALIENVAULT_REPORT_STATUS: "New"
+      ALIENVAULT_INTERVAL_SEC: "1800"
+
+  connector-cisa-kev:
+    image: opencti/connector-cisa-known-exploited-vulnerabilities:6.4.6
+    restart: *restart
+    depends_on: [opencti]
+    environment:
+      <<: *connector-env
+      CONNECTOR_ID: ${CONNECTOR_CISA_KEV_ID}
+      CONNECTOR_NAME: "CISA Known Exploited Vulnerabilities"
+      CONNECTOR_SCOPE: "vulnerability"
+      CISA_CATALOG_URL: "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+      CISA_CREATE_INFRASTRUCTURES: "false"
+      CISA_TLP: "clear"
+      CISA_INTERVAL: "2"  # days
+
+  connector-urlhaus:
+    image: opencti/connector-urlhaus:6.4.6
+    restart: *restart
+    depends_on: [opencti]
+    environment:
+      <<: *connector-env
+      CONNECTOR_ID: ${CONNECTOR_URLHAUS_ID}
+      CONNECTOR_NAME: "abuse.ch URLhaus"
+      CONNECTOR_SCOPE: "urlhaus"
+      URLHAUS_CSV_URL: "https://urlhaus.abuse.ch/downloads/csv_recent/"
+      URLHAUS_IMPORT_OFFLINE: "true"
+      URLHAUS_CREATE_INDICATORS: "true"
+      URLHAUS_THREATS_FROM_LABELS: "true"
+      URLHAUS_INTERVAL: "3"  # days
+
+  connector-malwarebazaar:
+    image: opencti/connector-malwarebazaar-recent-additions:6.4.6
+    restart: *restart
+    depends_on: [opencti]
+    environment:
+      <<: *connector-env
+      CONNECTOR_ID: ${CONNECTOR_MALWAREBAZAAR_ID}
+      CONNECTOR_NAME: "abuse.ch MalwareBazaar"
+      CONNECTOR_SCOPE: "malwarebazaar"
+      MALWAREBAZAAR_RECENT_ADDITIONS_API_URL: "https://mb-api.abuse.ch/api/v1/"
+      MALWAREBAZAAR_RECENT_ADDITIONS_COOLDOWN_SECONDS: "300"
+      MALWAREBAZAAR_RECENT_ADDITIONS_INCLUDE_TAGS: ""
+      MALWAREBAZAAR_RECENT_ADDITIONS_INCLUDE_REPORTERS: ""
+      MALWAREBAZAAR_RECENT_ADDITIONS_LABELS: "malware"
+      MALWAREBAZAAR_RECENT_ADDITIONS_LABELS_COLOR: "#54483b"
+
+  connector-threatfox:
+    image: opencti/connector-threatfox:6.4.6
+    restart: *restart
+    depends_on: [opencti]
+    environment:
+      <<: *connector-env
+      CONNECTOR_ID: ${CONNECTOR_THREATFOX_ID}
+      CONNECTOR_NAME: "abuse.ch ThreatFox"
+      CONNECTOR_SCOPE: "threatfox"
+      THREATFOX_CSV_URL: "https://threatfox.abuse.ch/export/csv/recent/"
+      THREATFOX_IMPORT_OFFLINE: "true"
+      THREATFOX_CREATE_INDICATORS: "true"
+      THREATFOX_DEFAULT_X_OPENCTI_SCORE: "50"
+      THREATFOX_INTERVAL: "3"  # days
+      THREATFOX_IOC_TO_IMPORT: "ip:port,domain,url"

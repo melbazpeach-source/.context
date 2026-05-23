@@ -112,6 +112,15 @@ Both point to the same `.context/` documentation.
 | `.context/changelog.md` | Substrate evolution log |
 | `.context/guidelines.md` | Git workflow, testing, deployment |
 
+### Research
+Pre-build research artifacts in `.context/research/`. Out-of-band from domain docs — read before starting on anything tagged `sirens` / threat-hunting.
+
+| File | Purpose |
+|------|---------|
+| `.context/research/sirens-swarm-survey.md` | Survey of OSS building blocks for the Sirens threat-hunting / DFIR / research / deception agent swarm; weaving map; gaps; active-defence guardrails |
+| `.context/research/sirens-build-plan.md` | Phased build plan derived from the survey |
+| `.context/research/sirens-cost-analysis.md` | Cost profile for the Sirens stack |
+
 ### Prompts
 Pre-built prompts in `.context/prompts/`:
 - `new-endpoint.md` - Adding API endpoints

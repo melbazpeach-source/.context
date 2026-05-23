@@ -1,0 +1,4 @@
+pycti==6.4.6
+pymisp>=2.4.190
+requests>=2.32
+urllib3>=2.2

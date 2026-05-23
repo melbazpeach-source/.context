@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sirens-mcp-canarytokens"
+version = "0.1.0"
+description = "MCP server wrapping self-hosted Canarytokens"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=1.2",
+    "httpx>=0.27",
+    "pydantic>=2.7",
+    "structlog>=24.1",
+]
+
+[project.scripts]
+sirens-mcp-canarytokens = "sirens_mcp_canarytokens.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["sirens_mcp_canarytokens"]
